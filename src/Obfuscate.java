@@ -28,9 +28,8 @@ import java.util.*;
 
 class Obfuscate
 {
-      
-   private  IDMapLoader  idMapLoader;
-   public   boolean      DebugTrue;   
+   public   boolean      DebugTrue; 
+   public   HashMap<String,String>  obfHMap;   
 
    public Obfuscate( )
    {
@@ -76,14 +75,6 @@ class Obfuscate
          this.sysVeriObfuscate(mapFile, inFile, outFile);
 
       }
-      else if(lanOpt.compareToIgnoreCase("vhd") == 0 )
-      {
-         this.vhdlObfuscate(mapFile, inFile, outFile);
-      }
-      else if(lanOpt.compareToIgnoreCase("sc") == 0 )
-      {
-         this.systemcObfuscate(mapFile, inFile, outFile);
-      }
       else
       {
         System.out.println("Main Error: Language option not supported");
@@ -94,40 +85,34 @@ class Obfuscate
 public void sysVeriObfuscate(String mapFile, String inFile, String outFile) 
    {
      
-      FileInputStream            ins;
       FileOutputStream           optfs;
       File                       optfile;
-      DataInputStream            dis;
-      SystemVerilogNoSkipLexer   lexer;
+      org.antlr.v4.runtime.CharStream  dis;
+      Verilog2001Lexer   lexer;
 
-      FileInputStream            inm;
-      DataInputStream            dim;
       DataOutputStream           dom;
-      IDMapLexer                 maplexer;
       String                     outputString   = "";
       String                     hashString     = "";
-      HashMap                    obfHMap; 
 
       
       try
        {
-         // Input ID Map Lexer
-         inm         = new FileInputStream(mapFile);           
-         dim         = new DataInputStream(inm);
-         maplexer    = new IDMapLexer(dim);
-         // load id map
-         idMapLoader = new IDMapLoader(maplexer);
-         idMapLoader.source_text();       
-         idMapLoader.DebugTrue   = this.DebugTrue;
-         obfHMap                 = idMapLoader.idHMap;
-         inm.close();
+		BufferedReader reader = new BufferedReader(new FileReader(new File(mapFile)));
+        String line = null;
+        HashMap<String, String> map = new HashMap<String, String>();
+        while ((line = reader.readLine()) != null) {
+            if (line.contains("=")) {
+                String[] strings = line.split("=");
+                map.put(strings[0], strings[1]);
+            }
+        }
+		 obfHMap = map;
          dom                     = new DataOutputStream(new FileOutputStream(mapFile,true));
          dom.writeBytes("\n//Appended due to input file:\t" + inFile + "\n");
 
-         // Input Verilog Lexer
-         ins         = new FileInputStream(inFile);           
-         dis         = new DataInputStream(ins);
-         lexer       = new SystemVerilogNoSkipLexer(dis);
+         // Input Verilog Lexer         
+         dis         = org.antlr.v4.runtime.CharStreams.fromFileName(inFile);
+         lexer       = new Verilog2001Lexer(dis);
       
          // Output Verilog File
          optfile     = new File(outFile);
@@ -141,10 +126,10 @@ public void sysVeriObfuscate(String mapFile, String inFile, String outFile)
            return;
          }
          
-         antlr.Token t = lexer.nextToken();
+         org.antlr.v4.runtime.Token t = lexer.nextToken();
          do {
             outputString = t.getText();
-            if( t.getType() == SystemVerilogNoSkipLexer.SIMPLE_IDENTIFIER )
+            if( t.getType() == Verilog2001Lexer.Simple_identifier )
             {
              // if ID avaliable in map
              if(obfHMap.containsKey(t.getText()))
@@ -173,23 +158,19 @@ public void sysVeriObfuscate(String mapFile, String inFile, String outFile)
              }
             }
             // strip comments and end of lines
-            else if( (t.getType() == SystemVerilogNoSkipLexer.ONE_LINE_COMMENT) ||  
-                     (t.getType() == SystemVerilogNoSkipLexer.BLOCK_COMMENT)    ||   
-                     (t.getType() == SystemVerilogNoSkipLexer.WHITE_SPACE)
+            else if( (t.getType() == Verilog2001Lexer.One_line_comment) ||  
+                     (t.getType() == Verilog2001Lexer.Block_comment)    ||   
+                     (t.getType() == Verilog2001Lexer.White_space)
                    )
             {
               outputString = " ";
             }
-            // set end of line before and after compiler directive
-            else if( t.getType() == SystemVerilogNoSkipLexer.COMPILER_DIRECTIVE )
-            {
-              outputString = "\n" + outputString + "\n";
-            }
+            
             // write to output file
             optfs.write(outputString.getBytes());
 
             t = lexer.nextToken();
-         }while(t.getType() != antlr.Token.EOF_TYPE);          
+         }while(t.getType() != org.antlr.v4.runtime.Token.EOF);          
          
          dom.close();
          optfs.close();
@@ -199,115 +180,6 @@ public void sysVeriObfuscate(String mapFile, String inFile, String outFile)
            System.out.println("Error: " + e.getMessage());
            e.printStackTrace();
        }
-   }
-
-   public void vhdlObfuscate(String mapFile, String inFile, String outFile) 
-   {
-        
-         FileInputStream            ins;
-         FileOutputStream           optfs;
-         File                       optfile;
-         DataInputStream            dis;
-         VhdlNoSkipLexer   lexer;
-   
-         FileInputStream            inm;
-         DataInputStream            dim;
-         DataOutputStream           dom;
-         IDMapLexer                 maplexer;
-         String                     outputString   = "";
-         String                     hashString     = "";
-         HashMap                    obfHMap; 
-   
-         
-         try
-          {
-            // Input ID Map Lexer
-            inm         = new FileInputStream(mapFile);           
-            dim         = new DataInputStream(inm);
-            maplexer    = new IDMapLexer(dim);
-            // load id map
-            idMapLoader = new IDMapLoader(maplexer);
-            idMapLoader.source_text();       
-            idMapLoader.DebugTrue   = this.DebugTrue;
-            obfHMap                 = idMapLoader.idHMap;
-            inm.close();
-            dom                     = new DataOutputStream(new FileOutputStream(mapFile,true));
-            dom.writeBytes("\n//Appended due to input file:\t" + inFile + "\n");
-   
-            // Input Verilog Lexer
-            ins         = new FileInputStream(inFile);           
-            dis         = new DataInputStream(ins);
-            lexer       = new VhdlNoSkipLexer(dis);
-         
-            // Output Verilog File
-            optfile     = new File(outFile);
-            if(optfile.createNewFile())
-            {           
-              optfs     = new FileOutputStream(optfile);
-            }
-            else
-            {
-              System.out.println("Could not create output file: "+ outFile + "\n");
-              return;
-            }
-            
-            antlr.Token t = lexer.nextToken();
-            do {
-               outputString = t.getText();
-               if( t.getType() == VhdlNoSkipLexer.SIMPLE_IDENTIFIER )
-               {
-                // if ID avaliable in map
-                if(obfHMap.containsKey(t.getText()))
-                {
-                   //if debug on
-                   if(DebugTrue) System.out.print("Value of ID: " + outputString + "\t\trenamed to :");
-                   // update output string
-                   outputString = (String) obfHMap.get(t.getText());                
-                   //if debug on
-                   if(DebugTrue) System.out.println(outputString);
-                }
-                else
-                {
-                   // generate hash string
-                   hashString = "ID_S_" + hash1(outputString) + "_" + hash2(outputString) + "_E";
-                   // add to hash map
-                   obfHMap.put(outputString , hashString );  
-                   dom.writeBytes( outputString + "=" + hashString + "\n");
-                   //if debug on
-                   if(DebugTrue) System.out.print("Value of ID: " + outputString + "\t\trenamed to :");
-                   // update output string
-                   outputString = hashString;
-                   
-                   //if debug on
-                   if(DebugTrue) System.out.println(hashString + " added in hash map");
-                }
-               }
-               // strip comments and end of lines
-               else if(t.getType() == VhdlNoSkipLexer.COMMENT) 
-               {
-                 outputString = " ";
-               }
-               // write to output file
-               optfs.write(outputString.getBytes());
-   
-               t = lexer.nextToken();
-            }while(t.getType() != antlr.Token.EOF_TYPE);          
-            
-            dom.close();
-            optfs.close();
-          }
-          catch(Exception e)
-          {
-              System.out.println("Error: " + e.getMessage());
-              e.printStackTrace();
-          }
-   }
-
-
-   
-   public void systemcObfuscate(String mapFile, String inFile, String outFile) 
-   {
-      System.out.println("SystemC is not supported in this release ");
    }
 
    public String  hash1(String str)
