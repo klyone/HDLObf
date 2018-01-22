@@ -1802,6 +1802,10 @@ One_line_comment
 Block_comment
    : '/*' .*? '*/' -> channel (HIDDEN)
    ;
+   
+Block_attribute
+   : '(*' .*? '*)' -> channel (HIDDEN)
+   ;
 
 // 9.3 Identifiers
 arrayed_identifier
@@ -1954,12 +1958,12 @@ specparam_identifier
 
 
 Simple_identifier
-   : [a-zA-Z_] [a-zA-Z0-9_$]*
+   : [a-zA-Z_\] [a-zA-Z0-9_$.<>]*
    ;
 
 
 Dollar_Identifier
-   : '$' [a-zA-Z0-9_$] [a-zA-Z0-9_$]*
+   : '$' [a-zA-Z0-9_$\] [a-zA-Z0-9_$.<>]*
    ;
 
 
