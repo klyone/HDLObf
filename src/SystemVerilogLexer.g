@@ -393,6 +393,21 @@ BLOCK_COMMENT
         "*/"
         //{ _ttype = Token.SKIP; }
     ;
+    
+//
+// Attributes
+//
+
+// multiple-line attributes
+BLOCK_ATTRIBUTE
+    :    "(*"
+        (    { LA(2)!='/' }? '*'
+        |    '\n' { newline(); }
+        |    ~('*'|'\n')
+        )*
+        "*)"
+        //{ _ttype = Token.SKIP; }
+    ;
 
 // a numeric literal
 //
