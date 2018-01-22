@@ -1,9 +1,6 @@
 #! /bin/bash
 
-BASE_DIR=`pwd`
-LIB_DIR="${BASE_DIR}/../lib"
-ANTLR_DIR="${LIB_DIR}/antlr-2.7.4.jar"
-export CLASSPATH=".:${ANTLR_DIR}:$CLASSPATH"
+source ./source_classpath.sh
 (java antlr.Tool -o ./generated MapReader.g > ../log/MapReader_OutputLog.dat)                           >& ../log/MapReader_ErrorLog.dat
 (java antlr.Tool -o ./generated SystemVerilogLexer.g > ../log/SystemVerilogLexer_OutputLog.dat)         >& ../log/SystemVerilogLexer_ErrorLog.dat
 (java antlr.Tool -o ./generated VHDLLexer.g > ../log/VHDLLexer_OutputLog.dat)   >& ../log/VHDLLexer_ErrorLog.dat
