@@ -1,0 +1,8 @@
+gates=gates_modified
+andg=andg_modified
+org=org_modified
+xorg=xorg_modified
+adder=adder_modified
+structural=structural_modified
+xor1=xor1_modified
+xor2=xor2_modified

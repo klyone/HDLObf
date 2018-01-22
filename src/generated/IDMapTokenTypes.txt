@@ -1,0 +1,8 @@
+// $ANTLR 2.7.4: MapReader.g -> IDMapTokenTypes.txt$
+IDMap    // output token vocab name
+ASSIGN=4
+IDENTIFIER=5
+VOCAB=6
+WS_=7
+SL_COMMENT=8
+ML_COMMENT=9

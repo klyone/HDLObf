@@ -1,0 +1,17 @@
+Release v1.2
+
+New Features:
+1) VHDL Parser update for BIT_STRING_LITERAL & STRING_LITERAL
+2) Compilation script updated
+
+Planned Features:
+(1) Scope based identifier name modification support.
+        a. To better obfuscate the code.
+        b. Ability to have modules that can be excluded form obfuscation
+        (automatically if not included in the list).
+(2) Multiple files loading instead of one by one, like a –f option to have a file
+      with list of file names and output directory.
+        a. Improves performance, as the map needs to be loaded only once.
+        b. Required to implement feature (1).
+
+
