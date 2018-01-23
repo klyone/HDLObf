@@ -131,7 +131,8 @@ public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, St
          org.antlr.v4.runtime.Token t = lexer.nextToken();
          do {
             outputString = t.getText();
-            if( t.getType() == Verilog2001Lexer.Simple_identifier )
+            if( t.getType() == Verilog2001Lexer.Simple_identifier ||
+				t.getType() == Verilog2001Lexer.Escaped_identifier )
             {
              // if ID avaliable in map
              if(obfHMap.containsKey(t.getText()))
