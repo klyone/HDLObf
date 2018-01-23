@@ -77,6 +77,10 @@ class Obfuscate
          this.VeriObfuscate(mapFileIn, mapFileOut, inFile, outFile);
 
       }
+      else if((lanOpt.compareToIgnoreCase("vhd") == 0 ))
+      {
+		  this.VhdlObfuscate(mapFileIn, mapFileOut, inFile, outFile);
+	  }
       else
       {
         System.out.println("Main Error: Language option not supported");
@@ -164,6 +168,109 @@ public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, St
             else if( (t.getType() == Verilog2001Lexer.One_line_comment) ||  
                      (t.getType() == Verilog2001Lexer.Block_comment)    ||   
                      (t.getType() == Verilog2001Lexer.White_space)
+                   )
+            {
+              outputString = " ";
+            }
+            
+            // write to output file
+            optfs.write(outputString.getBytes());
+
+            t = lexer.nextToken();
+         }while(t.getType() != org.antlr.v4.runtime.Token.EOF);          
+         
+         dom.close();
+         optfs.close();
+       }
+       catch(Exception e)
+       {
+           System.out.println("Error: " + e.getMessage());
+           e.printStackTrace();
+       }
+   }
+   
+   public void VhdlObfuscate(String mapFileIn, String mapFileOut, String inFile, String outFile) 
+   {
+     
+      FileOutputStream           optfs;
+      File                       optfile;
+      org.antlr.v4.runtime.CharStream  dis;
+      vhdlLexer   lexer;
+
+      DataOutputStream           dom;
+      String                     outputString   = "";
+      String                     hashString     = "";
+
+      
+      try
+       {
+		BufferedReader reader = new BufferedReader(new FileReader(new File(mapFileIn)));
+        String line = null;
+        HashMap<String, String> map = new HashMap<String, String>();
+        while ((line = reader.readLine()) != null) {
+            if (line.contains("=")) {
+                String[] strings = line.split("=");
+                map.put(strings[0], strings[1]);
+            }
+        }
+		 obfHMap = map;
+         dom                     = new DataOutputStream(new FileOutputStream(mapFileOut,true));
+         dom.writeBytes("\n//Appended due to input file:\t" + inFile + "\n");
+
+         // Input Verilog Lexer         
+         dis         = org.antlr.v4.runtime.CharStreams.fromFileName(inFile);
+         lexer       = new vhdlLexer(dis);
+      
+         // Output Verilog File
+         optfile     = new File(outFile);
+         if(optfile.createNewFile())
+         {           
+           optfs     = new FileOutputStream(optfile);
+         }
+         else
+         {
+           System.out.println("Could not create output file: "+ outFile + "\n");
+           return;
+         }
+         
+         org.antlr.v4.runtime.Token t = lexer.nextToken();
+         do {
+            outputString = t.getText();
+            if( t.getType() == vhdlLexer.BASIC_IDENTIFIER ||
+				t.getType() == vhdlLexer.EXTENDED_IDENTIFIER )
+            {
+             // if ID avaliable in map
+             if(obfHMap.containsKey(t.getText()))
+             {
+                //if debug on
+                if(DebugTrue) System.out.print("Value of ID: " + outputString + "\t\trenamed to :");
+                // update output string
+                outputString = (String) obfHMap.get(t.getText());                
+                //if debug on
+                if(DebugTrue) System.out.println(outputString);
+             }
+             else
+             {
+                // generate hash string
+                hashString = "ID_S_" + hash1(outputString) + "_" + hash2(outputString) + "_E";
+                // add to hash map
+                obfHMap.put(outputString , hashString );  
+                dom.writeBytes( outputString + "=" + hashString + "\n");
+                //if debug on
+                if(DebugTrue) System.out.print("Value of ID: " + outputString + "\t\trenamed to :");
+                // update output string
+                outputString = hashString;
+                
+                //if debug on
+                if(DebugTrue) System.out.println(hashString + " added in hash map");
+             }
+            }
+            // strip comments and end of lines
+            else if( (t.getType() == vhdlLexer.COMMENT) ||  
+                     (t.getType() == vhdlLexer.SPACE)    ||   
+                     (t.getType() == vhdlLexer.NEWLINE)  ||   
+                     (t.getType() == vhdlLexer.CR)  || 
+                     (t.getType() == vhdlLexer.TAB)
                    )
             {
               outputString = " ";
