@@ -41,7 +41,8 @@ class Obfuscate
    {
      // debug option
      String       lanOpt   = "";
-     String       mapFile  = "";
+     String       mapFileIn  = "";
+     String       mapFileOut  = "";
      String       inFile   = "";
      String       outFile  = "";
      Obfuscate    obf      = new Obfuscate();
@@ -52,27 +53,28 @@ class Obfuscate
        if(args.length > 3)
        {
          lanOpt  = args[0];
-         mapFile = args[1];
-         inFile  = args[2];
-         outFile = args[3];
+         mapFileIn = args[1];
+         mapFileOut = args[2];
+         inFile  = args[3];
+         outFile = args[4];
        }
-       obf.processFile(lanOpt, mapFile, inFile, outFile);
+       obf.processFile(lanOpt, mapFileIn, mapFileOut, inFile, outFile);
 
      }catch (Exception e)
      {
-         System.out.println("Usage: NameChange <Language Option> <map file> <input file> <output file>" + e.getMessage());
+         System.out.println("Usage: NameChange <Language Option> <map input file> <map output file> <input file> <output file>" + e.getMessage());
          System.out.println("Main Error: " + e.getMessage());
          e.printStackTrace();
      }
    }
 
-   public void processFile(String lanOpt, String mapFile, String inFile, String outFile)
+   public void processFile(String lanOpt, String mapFileIn, String mapFileOut, String inFile, String outFile)
    {
       
       // select language function
-      if((lanOpt.compareToIgnoreCase("ver") == 0 ) || (lanOpt.compareToIgnoreCase("sv") == 0 ))
+      if((lanOpt.compareToIgnoreCase("ver") == 0 ))
       {
-         this.sysVeriObfuscate(mapFile, inFile, outFile);
+         this.VeriObfuscate(mapFileIn, mapFileOut, inFile, outFile);
 
       }
       else
@@ -82,7 +84,7 @@ class Obfuscate
 
    }
    
-public void sysVeriObfuscate(String mapFile, String inFile, String outFile) 
+public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, String outFile) 
    {
      
       FileOutputStream           optfs;
@@ -97,7 +99,7 @@ public void sysVeriObfuscate(String mapFile, String inFile, String outFile)
       
       try
        {
-		BufferedReader reader = new BufferedReader(new FileReader(new File(mapFile)));
+		BufferedReader reader = new BufferedReader(new FileReader(new File(mapFileIn)));
         String line = null;
         HashMap<String, String> map = new HashMap<String, String>();
         while ((line = reader.readLine()) != null) {
@@ -107,7 +109,7 @@ public void sysVeriObfuscate(String mapFile, String inFile, String outFile)
             }
         }
 		 obfHMap = map;
-         dom                     = new DataOutputStream(new FileOutputStream(mapFile,true));
+         dom                     = new DataOutputStream(new FileOutputStream(mapFileOut,true));
          dom.writeBytes("\n//Appended due to input file:\t" + inFile + "\n");
 
          // Input Verilog Lexer         
