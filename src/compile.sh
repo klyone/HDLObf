@@ -12,4 +12,5 @@ fi
 (java org.antlr.v4.Tool -o ./generated ${VERILOG_GRAMMAR} > ../log/SystemVerilogLexer_OutputLog.dat)  >& ../log/SystemVerilogLexer_ErrorLog.dat
 (java org.antlr.v4.Tool -o ./generated ${VHDL_GRAMMAR} > ../log/VHDLLexer_OutputLog.dat)  >& ../log/VHDLLexer_ErrorLog.dat
 (javac -d ../bin  ./generated/*.java *.java ) >& ../log/JavacErrorLog.dat
+cp ./run_HDLObf.sh ../bin
 echo please view ../log/JavacErrorLog.dat for errors
