@@ -29,11 +29,16 @@ import java.util.*;
 class Obfuscate
 {
    public   boolean      DebugTrue; 
-   public   HashMap<String,String>  obfHMap;   
+   public   HashMap<String,String>  obfHMap;  
+   
+   private String spaces;
+   private Boolean top_handled;
 
    public Obfuscate( )
    {
-      DebugTrue   = false;         
+      DebugTrue   = false;
+      spaces = ""; 
+      top_handled = false;        
    }
 
 
@@ -46,7 +51,7 @@ class Obfuscate
      String       inFile   = "";
      String       outFile  = "";
      Obfuscate    obf      = new Obfuscate();
-     obf.DebugTrue         = true;
+     obf.DebugTrue         = false;
      try{
 
        // actual  option
@@ -87,7 +92,69 @@ class Obfuscate
       }
 
    }
-   
+
+private Boolean VeriIsIdentifier(org.antlr.v4.runtime.Token t)
+{
+   if( t.getType() == Verilog2001Lexer.Simple_identifier ||
+      t.getType() == Verilog2001Lexer.Escaped_identifier )
+      return true;
+   else
+      return false;
+}
+
+private Boolean VeriIsIgnored(org.antlr.v4.runtime.Token t)
+{
+   if( (t.getType() == Verilog2001Lexer.One_line_comment) ||  
+      (t.getType() == Verilog2001Lexer.Block_comment)    ||   
+      (t.getType() == Verilog2001Lexer.White_space))
+         return true;
+   else
+         return false;
+}
+
+private String VeriGenerateID(DataOutputStream dom, org.antlr.v4.runtime.Token t)
+{
+   String outputString = t.getText();
+   String hashString;
+
+   // if ID avaliable in map
+   if(obfHMap.containsKey(t.getText()))
+   {
+      // update output string
+      outputString = (String) obfHMap.get(t.getText());                
+   }
+   else
+   {
+      // generate hash string
+      hashString = "ID_S_" + hash1(outputString) + "_" + hash2(outputString) + "_E";
+      // add to hash map
+      obfHMap.put(outputString , hashString );  
+      try {
+         dom.writeBytes( outputString + "=" + hashString + "\n");
+      } catch(Exception e) {  
+         System.out.println("Error: " + e.getMessage());
+         e.printStackTrace();
+      }
+      outputString = hashString;
+
+   }
+
+   return outputString;
+}
+
+private org.antlr.v4.runtime.Token VeriDoIgnoreSpaces(Verilog2001Lexer lexer, org.antlr.v4.runtime.Token first)
+{
+   org.antlr.v4.runtime.Token tprev = first;
+   org.antlr.v4.runtime.Token t = first;
+   do {
+      tprev = t;
+      t = lexer.nextToken();
+      spaces += " ";
+   } while (VeriIsIgnored(t));
+
+   return t;
+}
+
 public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, String outFile) 
    {
      
@@ -99,7 +166,11 @@ public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, St
       DataOutputStream           dom;
       String                     outputString   = "";
       String                     hashString     = "";
-
+      Boolean primitive = false;
+      ArrayList<String> primitive_list = new ArrayList<String>();
+      ArrayList<String> ignoremod_list = new ArrayList<String>();
+      Boolean primitive_protected = false;
+      Boolean ignore_module = false;
       
       try
        {
@@ -107,14 +178,24 @@ public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, St
         String line = null;
         HashMap<String, String> map = new HashMap<String, String>();
         while ((line = reader.readLine()) != null) {
+            primitive = line.startsWith("@PRIMITIVE");
+            ignore_module = line.startsWith("@IGNOREMOD");
             if (line.contains("=")) {
-                String[] strings = line.split("=");
-                map.put(strings[0], strings[1]);
+               String[] strings = line.split("=");
+               if (!primitive && !ignore_module)
+                  map.put(strings[0], strings[1]);
+               
+               if(primitive)
+                  primitive_list.add(strings[1]);
+               if(ignore_module)
+                  ignoremod_list.add(strings[1]);
             }
         }
-		 obfHMap = map;
-         dom                     = new DataOutputStream(new FileOutputStream(mapFileOut,true));
-         dom.writeBytes("\n//Appended due to input file:\t" + inFile + "\n");
+
+        ignore_module = false;
+        obfHMap = map;
+        dom                     = new DataOutputStream(new FileOutputStream(mapFileOut,true));
+        dom.writeBytes("\n//Appended due to input file:\t" + inFile + "\n");
 
          // Input Verilog Lexer         
          dis         = org.antlr.v4.runtime.CharStreams.fromFileName(inFile);
@@ -133,42 +214,74 @@ public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, St
          }
          
          org.antlr.v4.runtime.Token t = lexer.nextToken();
+         org.antlr.v4.runtime.Token tprev = t;
          do {
             outputString = t.getText();
-            if( t.getType() == Verilog2001Lexer.Simple_identifier ||
-				t.getType() == Verilog2001Lexer.Escaped_identifier )
+
+            if(!top_handled) {
+               if(VeriIsIdentifier(t)) {
+                  obfHMap.put(t.getText(), t.getText());
+               } else if (tprev.getText().equals(")") && t.getText().equals(";")) {
+                  top_handled = true;
+               }
+            }
+
+            if(tprev.getText().equals("module")) {
+               spaces = "";
+               t = VeriDoIgnoreSpaces(lexer, t);
+               if(VeriIsIdentifier(t) && ignoremod_list.contains(t.getText())) {
+                  System.out.println("Ignoring module "+t.getText()+"\n");
+                  ignore_module = true;
+               }
+               optfs.write(spaces.getBytes());
+               outputString = t.getText();
+            }
+
+            if(ignore_module && t.getText().equals("endmodule")) {
+               ignore_module = false;
+            }
+
+            if(primitive_protected && tprev.getText().equals(")") && t.getText().equals(";"))
+               primitive_protected = false;
+
+            if(VeriIsIdentifier(t) && !tprev.getText().equals(".") && primitive_list.contains(outputString)) {
+               String id = t.getText();
+               String primitive_str = "";
+
+               spaces = "";
+               t = VeriDoIgnoreSpaces(lexer, t);
+
+               primitive_str += id;
+               primitive_str += spaces;
+
+               if(t.getText().equals("#")) {
+                  primitive_protected = true;
+               } else {
+                  if(VeriIsIdentifier(t)) {
+                     org.antlr.v4.runtime.Token tmp = t;
+                     spaces = "";
+                     t = VeriDoIgnoreSpaces(lexer, t);
+
+                     if(t.getText().equals("("))
+                        primitive_protected = true;
+
+                     primitive_str += VeriGenerateID(dom, tmp);
+                     primitive_str += spaces;
+                     System.out.println(primitive_str);
+                  }
+               }
+               outputString = t.getText();
+               optfs.write(primitive_str.getBytes());
+            }
+
+            if(VeriIsIdentifier(t))
             {
-             // if ID avaliable in map
-             if(obfHMap.containsKey(t.getText()))
-             {
-                //if debug on
-                if(DebugTrue) System.out.print("Value of ID: " + outputString + "\t\trenamed to :");
-                // update output string
-                outputString = (String) obfHMap.get(t.getText());                
-                //if debug on
-                if(DebugTrue) System.out.println(outputString);
-             }
-             else
-             {
-                // generate hash string
-                hashString = "ID_S_" + hash1(outputString) + "_" + hash2(outputString) + "_E";
-                // add to hash map
-                obfHMap.put(outputString , hashString );  
-                dom.writeBytes( outputString + "=" + hashString + "\n");
-                //if debug on
-                if(DebugTrue) System.out.print("Value of ID: " + outputString + "\t\trenamed to :");
-                // update output string
-                outputString = hashString;
-                
-                //if debug on
-                if(DebugTrue) System.out.println(hashString + " added in hash map");
-             }
+               if (!ignore_module && (!primitive_protected || !tprev.getText().equals("."))) {
+                  outputString = VeriGenerateID(dom, t);
+               }
             }
             // strip comments and end of lines
-            else if( (t.getType() == Verilog2001Lexer.One_line_comment) ||  
-                     (t.getType() == Verilog2001Lexer.Block_comment)    ||   
-                     (t.getType() == Verilog2001Lexer.White_space)
-                   )
+            else if(VeriIsIgnored(t))
             {
               outputString = " ";
             }
@@ -176,6 +289,7 @@ public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, St
             // write to output file
             optfs.write(outputString.getBytes());
 
+            tprev = t;
             t = lexer.nextToken();
          }while(t.getType() != org.antlr.v4.runtime.Token.EOF);          
          
@@ -242,12 +356,8 @@ public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, St
              // if ID avaliable in map
              if(obfHMap.containsKey(t.getText()))
              {
-                //if debug on
-                if(DebugTrue) System.out.print("Value of ID: " + outputString + "\t\trenamed to :");
                 // update output string
                 outputString = (String) obfHMap.get(t.getText());                
-                //if debug on
-                if(DebugTrue) System.out.println(outputString);
              }
              else
              {
@@ -256,13 +366,9 @@ public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, St
                 // add to hash map
                 obfHMap.put(outputString , hashString );  
                 dom.writeBytes( outputString + "=" + hashString + "\n");
-                //if debug on
-                if(DebugTrue) System.out.print("Value of ID: " + outputString + "\t\trenamed to :");
                 // update output string
                 outputString = hashString;
                 
-                //if debug on
-                if(DebugTrue) System.out.println(hashString + " added in hash map");
              }
             }
             // strip comments and end of lines
