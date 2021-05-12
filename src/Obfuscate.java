@@ -185,7 +185,7 @@ public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, St
                if (!primitive && !ignore_module)
                   map.put(strings[0], strings[1]);
                
-               if(primitive)
+               if(primitive || ignore_module)
                   primitive_list.add(strings[1]);
                if(ignore_module)
                   ignoremod_list.add(strings[1]);
