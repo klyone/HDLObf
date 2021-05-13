@@ -230,7 +230,6 @@ public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, St
                spaces = "";
                t = VeriDoIgnoreSpaces(lexer, t);
                if(VeriIsIdentifier(t) && ignoremod_list.contains(t.getText())) {
-                  System.out.println("Ignoring module "+t.getText()+"\n");
                   ignore_module = true;
                }
                optfs.write(spaces.getBytes());
@@ -267,7 +266,6 @@ public void VeriObfuscate(String mapFileIn, String mapFileOut, String inFile, St
 
                      primitive_str += VeriGenerateID(dom, tmp);
                      primitive_str += spaces;
-                     System.out.println(primitive_str);
                   }
                }
                outputString = t.getText();
